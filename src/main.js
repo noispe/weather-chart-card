@@ -807,7 +807,7 @@ updateChart({ forecasts, forecastChart } = this) {
   }
 }
 
-  render({config, _hass, weather} = this) {
+render({config, _hass, weather} = this) {
     if (!config || !_hass) {
       return html``;
     }
@@ -966,7 +966,6 @@ updateChart({ forecasts, forecastChart } = this) {
       <ha-card header="${config.title}">
         <div class="card">
           ${this.renderMain()}
-          ${this.renderAttributes()}
           <div class="chart-container">
             <canvas id="forecastChart"></canvas>
           </div>
@@ -1047,27 +1046,7 @@ renderMain({ config, sun, weather, temperature, feels_like, description } = this
 
   return html`
     <div class="main">
-      ${iconHtml}
       <div>
-        <div>
-          ${showTemperature ? html`${roundedTemperature}<span>${this.getUnit('temperature')}</span>` : ''}
-          ${showFeelsLike && roundedFeelsLike ? html`
-            <div class="feels-like">
-              ${this.ll('feelsLike')}
-              ${roundedFeelsLike}${this.getUnit('temperature')}
-            </div>
-          ` : ''}
-          ${showCurrentCondition ? html`
-            <div class="current-condition">
-              <span>${this.ll(weather.state)}</span>
-            </div>
-          ` : ''}
-          ${showDescription ? html`
-            <div class="description">
-              ${description}
-            </div>
-          ` : ''}
-        </div>
         ${showTime ? html`
           <div class="current-time">
             <div id="digital-clock"></div>
@@ -1076,6 +1055,29 @@ renderMain({ config, sun, weather, temperature, feels_like, description } = this
             ${showDate ? html`<div class="date-text date"></div>` : ''}
           </div>
         ` : ''}
+        <div>
+          ${iconHtml}
+          <div>
+            ${showTemperature ? html`${roundedTemperature}<span>${this.getUnit('temperature')}</span>` : ''}
+            ${showFeelsLike && roundedFeelsLike ? html`
+              <div class="feels-like">
+                ${this.ll('feelsLike')}
+                ${roundedFeelsLike}${this.getUnit('temperature')}
+              </div>
+            ` : ''}
+            ${showCurrentCondition ? html`
+              <div class="current-condition">
+                <span>${this.ll(weather.state)}</span>
+              </div>
+            ` : ''}
+            ${showDescription ? html`
+              <div class="description">
+                ${description}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+        ${this.renderAttributes()}
       </div>
     </div>
   `;
