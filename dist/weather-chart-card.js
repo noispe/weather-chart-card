@@ -18230,7 +18230,7 @@ autoscroll() {
     this.autoscrollTimeout = setTimeout(() => {
       this.autoscrollTimeout = null;
       this.updateChart();
-      drawChartOncePerHour();
+      updateChartOncePerHour();
     }, nextHour - now);
   };
 
@@ -18743,7 +18743,7 @@ render({config, _hass, weather} = this) {
           font-size: ${config.current_temp_size}px;
         }
         .main .feels-like {
-          font-size: 13px;
+          font-size: initial;
           margin-top: 5px;
           font-weight: 400;
         }
