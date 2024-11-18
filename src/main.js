@@ -834,8 +834,7 @@ render({config, _hass, weather} = this) {
           color: var(--paper-item-icon-color);
         }
         img {
-          width: ${config.icons_size}px;
-          height: ${config.icons_size}px;
+          width: 100%;
         }
         .card {
           padding-top: ${config.title ? '0px' : '16px'};
@@ -845,12 +844,12 @@ render({config, _hass, weather} = this) {
         }
         .main {
           display: flex;
+          justify-content: space-between;
           align-items: center;
-          font-size: ${config.current_temp_size}px;
           margin-bottom: 10px;
         }
         .main ha-icon {
-          --mdc-icon-size: 50px;
+          /*--mdc-icon-size: 50px;*/
           margin-right: 14px;
           margin-inline-start: initial;
           margin-inline-end: 14px;
@@ -872,10 +871,12 @@ render({config, _hass, weather} = this) {
         .attributes {
           display: flex;
           justify-content: space-between;
+          column-gap: 30px;
           align-items: center;
           margin-bottom: 6px;
       	  font-weight: 300;
           direction: ltr;
+          font-size: initial;
         }
         .chart-container {
           position: relative;
@@ -933,7 +934,6 @@ render({config, _hass, weather} = this) {
           margin-inline-end: initial;
         }
         .current-time {
-          position: absolute;
           top: 20px;
           right: 16px;
           inset-inline-start: initial;
@@ -944,13 +944,21 @@ render({config, _hass, weather} = this) {
           font-size: ${config.day_date_size}px;
           color: var(--secondary-text-color);
         }
+        .main .weather-condition{
+          display: flex;
+        }
+        .main .weather-condition .temperature {
+          display: flex;
+          flex-direction: column;
+          font-size: ${config.current_temp_size}px;
+        }
         .main .feels-like {
-          font-size: 13px;
+          font-size: initial;
           margin-top: 5px;
           font-weight: 400;
         }
         .main .description {
-	  font-style: italic;
+	        font-style: italic;
           font-size: 13px;
           margin-top: 5px;
           font-weight: 400;
@@ -1046,39 +1054,37 @@ renderMain({ config, sun, weather, temperature, feels_like, description } = this
 
   return html`
     <div class="main">
-      <div>
-        ${showTime ? html`
-          <div class="current-time">
-            <div id="digital-clock"></div>
-            ${showDay ? html`<div class="date-text day"></div>` : ''}
-            ${showDay && showDate ? html` ` : ''}
-            ${showDate ? html`<div class="date-text date"></div>` : ''}
-          </div>
-        ` : ''}
-        <div>
-          ${iconHtml}
-          <div>
-            ${showTemperature ? html`${roundedTemperature}<span>${this.getUnit('temperature')}</span>` : ''}
-            ${showFeelsLike && roundedFeelsLike ? html`
-              <div class="feels-like">
-                ${this.ll('feelsLike')}
-                ${roundedFeelsLike}${this.getUnit('temperature')}
-              </div>
-            ` : ''}
-            ${showCurrentCondition ? html`
-              <div class="current-condition">
-                <span>${this.ll(weather.state)}</span>
-              </div>
-            ` : ''}
-            ${showDescription ? html`
-              <div class="description">
-                ${description}
-              </div>
-            ` : ''}
-          </div>
+      ${showTime ? html`
+        <div class="current-time">
+          <div id="digital-clock"></div>
+          ${showDay ? html`<div class="date-text day"></div>` : ''}
+          ${showDay && showDate ? html` ` : ''}
+          ${showDate ? html`<div class="date-text date"></div>` : ''}
         </div>
-        ${this.renderAttributes()}
+      ` : ''}
+      <div class="weather-condition">
+        ${iconHtml}
+        <div class="temperature">
+          ${showCurrentCondition ? html`
+            <div class="current-condition">
+              <span>${this.ll(weather.state)}</span>
+            </div>
+          ` : ''}
+          ${showDescription ? html`
+            <div class="description">
+              ${description}
+            </div>
+          ` : ''}
+          ${showTemperature ? html`<div>${roundedTemperature}<span>${this.getUnit('temperature')}</span></div>` : ''}
+          ${showFeelsLike && roundedFeelsLike ? html`
+            <div class="feels-like">
+              ${this.ll('feelsLike')}
+              ${roundedFeelsLike}${this.getUnit('temperature')}
+            </div>
+          ` : ''}
+        </div>
       </div>
+      ${this.renderAttributes()}
     </div>
   `;
 }

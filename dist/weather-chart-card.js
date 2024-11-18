@@ -835,9 +835,7 @@ const weatherIconsNight = {
 
 const WeatherEntityFeature = {
   FORECAST_DAILY: 1,
-  FORECAST_HOURLY: 2,
-  FORECAST_TWICE_DAILY: 4,
-};
+  FORECAST_HOURLY: 2};
 
 /**
  * @license
@@ -2256,9 +2254,9 @@ class Color {
 }
 
 /*!
- * Chart.js v4.4.1
+ * Chart.js v4.4.6
  * https://www.chartjs.org
- * (c) 2023 Chart.js Contributors
+ * (c) 2024 Chart.js Contributors
  * Released under the MIT License
  */
 
@@ -2339,11 +2337,7 @@ function each(loopable, fn, thisArg, reverse) {
     let i, len, keys;
     if (isArray(loopable)) {
         len = loopable.length;
-        if (reverse) {
-            for(i = len - 1; i >= 0; i--){
-                fn.call(thisArg, loopable[i], i);
-            }
-        } else {
+        {
             for(i = 0; i < len; i++){
                 fn.call(thisArg, loopable[i], i);
             }
@@ -3433,6 +3427,9 @@ function _longestText(ctx, font, arrayOfThings, cache) {
 /**
  * Clears the entire canvas.
  */ function clearCanvas(canvas, ctx) {
+    if (!ctx && !canvas) {
+        return;
+    }
     ctx = ctx || canvas.getContext('2d');
     ctx.save();
     // canvas.width and canvas.height do not consider the canvas transform,
@@ -3839,7 +3836,6 @@ function _readValueToProps(value, props) {
  * @param info.cacheable - Will be set to `false` if option is not cacheable.
  * @since 2.7.0
  */ function resolve(inputs, context, index, info) {
-    let cacheable = true;
     let i, ilen, value;
     for(i = 0, ilen = inputs.length; i < ilen; ++i){
         value = inputs[i];
@@ -3848,16 +3844,11 @@ function _readValueToProps(value, props) {
         }
         if (context !== undefined && typeof value === 'function') {
             value = value(context);
-            cacheable = false;
         }
         if (index !== undefined && isArray(value)) {
             value = value[index % value.length];
-            cacheable = false;
         }
         if (value !== undefined) {
-            if (info && !cacheable) {
-                info.cacheable = false;
-            }
             return value;
         }
     }
@@ -4035,7 +4026,7 @@ function createContext(parentContext, context) {
 const readKey = (prefix, name)=>prefix ? prefix + _capitalize(name) : name;
 const needsSubResolver = (prop, value)=>isObject(value) && prop !== 'adapters' && (Object.getPrototypeOf(value) === null || value.constructor === Object);
 function _cached(target, prop, resolve) {
-    if (Object.prototype.hasOwnProperty.call(target, prop)) {
+    if (Object.prototype.hasOwnProperty.call(target, prop) || prop === 'constructor') {
         return target[prop];
     }
     const value = resolve();
@@ -4481,7 +4472,7 @@ const useOffsetPos = (x, y, target)=>(x > 0 || y > 0) && (!target || !target.sha
 function getContainerSize(canvas, width, height) {
     let maxWidth, maxHeight;
     if (width === undefined || height === undefined) {
-        const container = _getParentNode(canvas);
+        const container = canvas && _getParentNode(canvas);
         if (!container) {
             width = canvas.clientWidth;
             height = canvas.clientHeight;
@@ -4988,9 +4979,9 @@ function styleChanged(style, prevStyle) {
 }
 
 /*!
- * Chart.js v4.4.1
+ * Chart.js v4.4.6
  * https://www.chartjs.org
- * (c) 2023 Chart.js Contributors
+ * (c) 2024 Chart.js Contributors
  * Released under the MIT License
  */
 
@@ -5424,9 +5415,11 @@ function applyStack(stack, value, dsIndex, options = {}) {
     if (value === null) {
         return;
     }
+    let found = false;
     for(i = 0, ilen = keys.length; i < ilen; ++i){
         datasetIndex = +keys[i];
         if (datasetIndex === dsIndex) {
+            found = true;
             if (options.all) {
                 continue;
             }
@@ -5437,17 +5430,23 @@ function applyStack(stack, value, dsIndex, options = {}) {
             value += otherValue;
         }
     }
+    if (!found && !options.all) {
+        return 0;
+    }
     return value;
 }
-function convertObjectDataToArray(data) {
+function convertObjectDataToArray(data, meta) {
+    const { iScale , vScale  } = meta;
+    const iAxisKey = iScale.axis === 'x' ? 'x' : 'y';
+    const vAxisKey = vScale.axis === 'x' ? 'x' : 'y';
     const keys = Object.keys(data);
     const adata = new Array(keys.length);
     let i, ilen, key;
     for(i = 0, ilen = keys.length; i < ilen; ++i){
         key = keys[i];
         adata[i] = {
-            x: key,
-            y: data[key]
+            [iAxisKey]: key,
+            [vAxisKey]: data[key]
         };
     }
     return adata;
@@ -5639,7 +5638,8 @@ class DatasetController {
         const data = dataset.data || (dataset.data = []);
         const _data = this._data;
         if (isObject(data)) {
-            this._data = convertObjectDataToArray(data);
+            const meta = this._cachedMeta;
+            this._data = convertObjectDataToArray(data, meta);
         } else if (_data !== data) {
             if (_data) {
                 unlistenArrayEvents(_data, this);
@@ -5676,6 +5676,7 @@ class DatasetController {
         this._resyncElements(resetNewElements);
         if (stackChanged || oldStacked !== meta._stacked) {
             updateStacks(this, meta._parsed);
+            meta._stacked = isStacked(meta.vScale, meta);
         }
     }
  configure() {
@@ -6470,8 +6471,10 @@ class BarController extends DatasetController {
         const metasets = iScale.getMatchingVisibleMetas(this._type).filter((meta)=>meta.controller.options.grouped);
         const stacked = iScale.options.stacked;
         const stacks = [];
+        const currentParsed = this._cachedMeta.controller.getParsed(dataIndex);
+        const iScaleValue = currentParsed && currentParsed[iScale.axis];
         const skipNull = (meta)=>{
-            const parsed = meta.controller.getParsed(dataIndex);
+            const parsed = meta._parsed.find((item)=>item[iScale.axis] === iScaleValue);
             const val = parsed && parsed[meta.vScale.axis];
             if (isNullOrUndef(val) || isNaN(val)) {
                 return true;
@@ -6610,7 +6613,7 @@ class BarController extends DatasetController {
         const ilen = rects.length;
         let i = 0;
         for(; i < ilen; ++i){
-            if (this.getParsed(i)[vScale.axis] !== null) {
+            if (this.getParsed(i)[vScale.axis] !== null && !rects[i].hidden) {
                 rects[i].draw(this._ctx);
             }
         }
@@ -7739,7 +7742,7 @@ function binarySearch(metaset, axis, value, intersect) {
     const rangeMethod = axis === 'x' ? 'inXRange' : 'inYRange';
     let intersectsItem = false;
     evaluateInteractionItems(chart, axis, position, (element, datasetIndex, index)=>{
-        if (element[rangeMethod](position[axis], useFinalPosition)) {
+        if (element[rangeMethod] && element[rangeMethod](position[axis], useFinalPosition)) {
             items.push({
                 element,
                 datasetIndex,
@@ -7754,7 +7757,6 @@ function binarySearch(metaset, axis, value, intersect) {
     return items;
 }
  var Interaction = {
-    evaluateInteractionItems,
     modes: {
  index (chart, e, options, useFinalPosition) {
             const position = getRelativePosition(e, chart);
@@ -8017,7 +8019,6 @@ function placeBoxes(boxes, chartArea, params, stacks) {
     for (const layout of boxes){
         const box = layout.box;
         const stack = stacks[layout.stack] || {
-            count: 1,
             placed: 0,
             weight: 1
         };
@@ -8235,13 +8236,16 @@ const isNullOrEmpty = (value)=>value === null || value === '';
     return canvas;
 }
 const eventListenerOptions = supportsEventListenerOptions ? {
-    passive: true
-} : false;
+    } : false;
 function addListener(node, type, listener) {
-    node.addEventListener(type, listener, eventListenerOptions);
+    if (node) {
+        node.addEventListener(type, listener, eventListenerOptions);
+    }
 }
 function removeListener(chart, type, listener) {
-    chart.canvas.removeEventListener(type, listener, eventListenerOptions);
+    if (chart && chart.canvas) {
+        chart.canvas.removeEventListener(type, listener, eventListenerOptions);
+    }
 }
 function fromNativeEvent(event, chart) {
     const type = EVENT_TYPES[event.type] || event.type;
@@ -8434,7 +8438,7 @@ function createProxyAndListen(chart, type, listener) {
         return getMaximumSize(canvas, width, height, aspectRatio);
     }
  isAttached(canvas) {
-        const container = _getParentNode(canvas);
+        const container = canvas && _getParentNode(canvas);
         return !!(container && container.isConnected);
     }
 }
@@ -10493,7 +10497,7 @@ function needContext(proxy, names) {
     return false;
 }
 
-var version = "4.4.1";
+var version = "4.4.6";
 
 const KNOWN_POSITIONS = [
     'top',
@@ -11025,8 +11029,8 @@ class Chart {
         let i;
         if (this._resizeBeforeDraw) {
             const { width , height  } = this._resizeBeforeDraw;
-            this._resize(width, height);
             this._resizeBeforeDraw = null;
+            this._resize(width, height);
         }
         this.clear();
         if (this.width <= 0 || this.height <= 0) {
@@ -11665,7 +11669,8 @@ class ArcElement extends Element {
         ], useFinalPosition);
         const rAdjust = (this.options.spacing + this.options.borderWidth) / 2;
         const _circumference = valueOrDefault(circumference, endAngle - startAngle);
-        const betweenAngles = _circumference >= TAU || _angleBetween(angle, startAngle, endAngle);
+        const nonZeroBetween = _angleBetween(angle, startAngle, endAngle) && startAngle !== endAngle;
+        const betweenAngles = _circumference >= TAU || nonZeroBetween;
         const withinRadius = _isBetween(distance, innerRadius + rAdjust, outerRadius + rAdjust);
         return betweenAngles && withinRadius;
     }
@@ -12331,6 +12336,9 @@ function containsColorsDefinitions(descriptors) {
 function containsColorsDefinition(descriptor) {
     return descriptor && (descriptor.borderColor || descriptor.backgroundColor);
 }
+function containsDefaultColorsDefenitions() {
+    return defaults$1.borderColor !== 'rgba(0,0,0,0.1)' || defaults$1.backgroundColor !== 'rgba(0,0,0,0.1)';
+}
 var plugin_colors = {
     id: 'colors',
     defaults: {
@@ -12343,7 +12351,8 @@ var plugin_colors = {
         }
         const { data: { datasets  } , options: chartOptions  } = chart.config;
         const { elements  } = chartOptions;
-        if (!options.forceOverride && (containsColorsDefinitions(datasets) || containsColorsDefinition(chartOptions) || elements && containsColorsDefinitions(elements))) {
+        const containsColorDefenition = containsColorsDefinitions(datasets) || containsColorsDefinition(chartOptions) || elements && containsColorsDefinitions(elements) || containsDefaultColorsDefenitions();
+        if (!options.forceOverride && containsColorDefenition) {
             return;
         }
         const colorizer = getColorizer(chart);
@@ -13874,20 +13883,26 @@ const positioners$1 = {
             return false;
         }
         let i, len;
-        let x = 0;
+        let xSet = new Set();
         let y = 0;
         let count = 0;
         for(i = 0, len = items.length; i < len; ++i){
             const el = items[i].element;
             if (el && el.hasValue()) {
                 const pos = el.tooltipPosition();
-                x += pos.x;
+                xSet.add(pos.x);
                 y += pos.y;
                 ++count;
             }
         }
+        if (count === 0 || xSet.size === 0) {
+            return false;
+        }
+        const xAverage = [
+            ...xSet
+        ].reduce((a, b)=>a + b) / xSet.size;
         return {
-            x: x / count,
+            x: xAverage,
             y: y / count
         };
     },
@@ -15635,7 +15650,7 @@ function drawRadiusLine(scale, gridLineOpts, radius, labelCount, borderOpts) {
     ctx.save();
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
-    ctx.setLineDash(borderOpts.dash);
+    ctx.setLineDash(borderOpts.dash || []);
     ctx.lineDashOffset = borderOpts.dashOffset;
     ctx.beginPath();
     pathRadiusLine(scale, radius, circular, labelCount);
@@ -15818,7 +15833,7 @@ class RadialLinearScale extends LinearScaleBase {
         }
         if (grid.display) {
             this.ticks.forEach((tick, index)=>{
-                if (index !== 0) {
+                if (index !== 0 || index === 0 && this.min < 0) {
                     offset = this.getDistanceFromCenterForValue(tick.value);
                     const context = this.getContext(index);
                     const optsAtIndex = grid.setContext(context);
@@ -15839,7 +15854,7 @@ class RadialLinearScale extends LinearScaleBase {
                 ctx.strokeStyle = color;
                 ctx.setLineDash(optsAtIndex.borderDash);
                 ctx.lineDashOffset = optsAtIndex.borderDashOffset;
-                offset = this.getDistanceFromCenterForValue(opts.ticks.reverse ? this.min : this.max);
+                offset = this.getDistanceFromCenterForValue(opts.reverse ? this.min : this.max);
                 position = this.getPointPosition(i, offset);
                 ctx.beginPath();
                 ctx.moveTo(this.xCenter, this.yCenter);
@@ -15865,7 +15880,7 @@ class RadialLinearScale extends LinearScaleBase {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         this.ticks.forEach((tick, index)=>{
-            if (index === 0 && !opts.reverse) {
+            if (index === 0 && this.min >= 0 && !opts.reverse) {
                 return;
             }
             const optsAtIndex = tickOpts.setContext(this.getContext(index));
@@ -18582,7 +18597,7 @@ updateChart({ forecasts, forecastChart } = this) {
   }
 }
 
-  render({config, _hass, weather} = this) {
+render({config, _hass, weather} = this) {
     if (!config || !_hass) {
       return x``;
     }
@@ -18609,8 +18624,7 @@ updateChart({ forecasts, forecastChart } = this) {
           color: var(--paper-item-icon-color);
         }
         img {
-          width: ${config.icons_size}px;
-          height: ${config.icons_size}px;
+          width: 100%;
         }
         .card {
           padding-top: ${config.title ? '0px' : '16px'};
@@ -18620,12 +18634,12 @@ updateChart({ forecasts, forecastChart } = this) {
         }
         .main {
           display: flex;
+          justify-content: space-between;
           align-items: center;
-          font-size: ${config.current_temp_size}px;
           margin-bottom: 10px;
         }
         .main ha-icon {
-          --mdc-icon-size: 50px;
+          /*--mdc-icon-size: 50px;*/
           margin-right: 14px;
           margin-inline-start: initial;
           margin-inline-end: 14px;
@@ -18647,10 +18661,12 @@ updateChart({ forecasts, forecastChart } = this) {
         .attributes {
           display: flex;
           justify-content: space-between;
+          column-gap: 30px;
           align-items: center;
           margin-bottom: 6px;
       	  font-weight: 300;
           direction: ltr;
+          font-size: initial;
         }
         .chart-container {
           position: relative;
@@ -18708,7 +18724,6 @@ updateChart({ forecasts, forecastChart } = this) {
           margin-inline-end: initial;
         }
         .current-time {
-          position: absolute;
           top: 20px;
           right: 16px;
           inset-inline-start: initial;
@@ -18719,13 +18734,21 @@ updateChart({ forecasts, forecastChart } = this) {
           font-size: ${config.day_date_size}px;
           color: var(--secondary-text-color);
         }
+        .main .weather-condition{
+          display: flex;
+        }
+        .main .weather-condition .temperature {
+          display: flex;
+          flex-direction: column;
+          font-size: ${config.current_temp_size}px;
+        }
         .main .feels-like {
           font-size: 13px;
           margin-top: 5px;
           font-weight: 400;
         }
         .main .description {
-	  font-style: italic;
+	        font-style: italic;
           font-size: 13px;
           margin-top: 5px;
           font-weight: 400;
@@ -18741,7 +18764,6 @@ updateChart({ forecasts, forecastChart } = this) {
       <ha-card header="${config.title}">
         <div class="card">
           ${this.renderMain()}
-          ${this.renderAttributes()}
           <div class="chart-container">
             <canvas id="forecastChart"></canvas>
           </div>
@@ -18822,16 +18844,17 @@ renderMain({ config, sun, weather, temperature, feels_like, description } = this
 
   return x`
     <div class="main">
-      ${iconHtml}
-      <div>
-        <div>
-          ${showTemperature ? x`${roundedTemperature}<span>${this.getUnit('temperature')}</span>` : ''}
-          ${showFeelsLike && roundedFeelsLike ? x`
-            <div class="feels-like">
-              ${this.ll('feelsLike')}
-              ${roundedFeelsLike}${this.getUnit('temperature')}
-            </div>
-          ` : ''}
+      ${showTime ? x`
+        <div class="current-time">
+          <div id="digital-clock"></div>
+          ${showDay ? x`<div class="date-text day"></div>` : ''}
+          ${showDay && showDate ? x` ` : ''}
+          ${showDate ? x`<div class="date-text date"></div>` : ''}
+        </div>
+      ` : ''}
+      <div class="weather-condition">
+        ${iconHtml}
+        <div class="temperature">
           ${showCurrentCondition ? x`
             <div class="current-condition">
               <span>${this.ll(weather.state)}</span>
@@ -18842,16 +18865,16 @@ renderMain({ config, sun, weather, temperature, feels_like, description } = this
               ${description}
             </div>
           ` : ''}
+          ${showTemperature ? x`<div>${roundedTemperature}<span>${this.getUnit('temperature')}</span></div>` : ''}
+          ${showFeelsLike && roundedFeelsLike ? x`
+            <div class="feels-like">
+              ${this.ll('feelsLike')}
+              ${roundedFeelsLike}${this.getUnit('temperature')}
+            </div>
+          ` : ''}
         </div>
-        ${showTime ? x`
-          <div class="current-time">
-            <div id="digital-clock"></div>
-            ${showDay ? x`<div class="date-text day"></div>` : ''}
-            ${showDay && showDate ? x` ` : ''}
-            ${showDate ? x`<div class="date-text date"></div>` : ''}
-          </div>
-        ` : ''}
       </div>
+      ${this.renderAttributes()}
     </div>
   `;
 }
