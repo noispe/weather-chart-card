@@ -846,10 +846,12 @@ render({config, _hass, weather} = this) {
           display: flex;
           justify-content: space-between;
           align-items: center;
+          flex-wrap: wrap;
+          row-gap: 20px;
           margin-bottom: 10px;
         }
         .main ha-icon {
-          /*--mdc-icon-size: 50px;*/
+          /*--mdc-icon-size: 20px;*/
           margin-right: 14px;
           margin-inline-start: initial;
           margin-inline-end: 14px;
