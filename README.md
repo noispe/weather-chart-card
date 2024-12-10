@@ -19,7 +19,66 @@
 This card is available in HACS (Home Assistant Community Store).
 HACS is a third party community store and is not included in Home Assistant out of the box.
 
-#### Configuration variables:
+### IMPORTANT NOTE
+
+This version has been modified to NOT use forecast subscription, because this may cause crashes on lower powered devices.
+
+Instead a special weather entity that incooperates a forecast attribute is used.
+This special entity can be easily created by using a home assistant template sensor.
+
+Example for hourly sensor
+
+```yaml
+template:
+  - trigger:
+    - trigger: time_pattern
+      minutes: 00
+    - trigger: state
+      entity_id: <weather sensor id>  #id of the 'default' weather sensor
+    action:
+      - service: weather.get_forecasts
+        data:
+          type: hourly
+        target:
+          entity_id:  weather.forecast
+        response_variable: hourly
+    sensor:
+      - unique_id: weather_forecast_hourly
+        name: Hourly forecast
+        state: >
+          {{ states('<weather sensor id>') }}
+        attributes:
+          forecast: >
+            {{ hourly['<weather sensor id>'].forecast }}
+          temperature: >
+            {{ state_attr('<weather sensor id>', 'temperature') }}
+          dew_point: >
+            {{ state_attr('<weather sensor id>', 'dew_point')}}
+          humidity: >
+            {{ state_attr('<weather sensor id>', 'humidity')}}
+          cloud_coverage: >
+            {{ state_attr('<weather sensor id>', 'cloud_coverage')}}
+          uv_index: >
+            {{ state_attr('<weather sensor id>', 'uv_index')}}
+          pressure: >
+            {{ state_attr('<weather sensor id>', 'pressure')}}
+          wind_bearing: >
+            {{ state_attr('<weather sensor id>', 'wind_bearing')}}
+          wind_speed: >
+            {{ state_attr('<weather sensor id>', 'wind_speed')}}
+          temperature_unit: >
+            {{ state_attr('<weather sensor id>', 'temperature_unit')}}
+          pressure_unit: >
+            {{ state_attr('<weather sensor id>', 'pressure_unit')}}
+          wind_speed_unit: >
+            {{ state_attr('<weather sensor id>', 'wind_speed_unit')}}
+          visibility_unit: >
+            {{ state_attr('<weather sensor id>', 'visibility_unit')}}
+          precipitation_unit: >
+            {{ state_attr('<weather sensor id>', 'precipitation_unit')}}
+```
+
+#### Configuration variables
 
 ##### Card options
 

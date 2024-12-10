@@ -4,7 +4,8 @@ import {
   weatherIcons,
   weatherIconsDay,
   weatherIconsNight,
-  WeatherEntityFeature
+  WeatherEntityFeature,
+  CARD_VERSION,
 } from './const.js';
 import {LitElement, html} from 'lit';
 import './weather-chart-card-editor.js';
@@ -12,6 +13,12 @@ import { property } from 'lit/decorators.js';
 import {Chart, registerables} from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 Chart.register(...registerables, ChartDataLabels);
+
+console.info(
+  `%c  Weather-Chart-card \n%c  v${CARD_VERSION}    `,
+  'color: orange; font-weight: bold; background: black',
+  'color: white; font-weight: bold; background: dimgray',
+);
 
 class WeatherChartCard extends LitElement {
 
@@ -67,7 +74,7 @@ static getStubConfig(hass, unusedEntities, allEntities) {
 
   static get properties() {
     return {
-      _hass: {},
+      _hass: {}, //bad practice, but seems to work!!
       config: {},
       language: {},
       sun: {type: Object},
@@ -82,6 +89,12 @@ static getStubConfig(hass, unusedEntities, allEntities) {
       forecasts: { type: Array }
     };
   }
+
+//testing direct setting of values
+//TODO: remove
+// set temperature(temperature){
+//   console.debug('temperature was set!', temperature);
+// }
 
 setConfig(config) {
   const cardConfig = {
@@ -141,10 +154,8 @@ set hass(hass) {
   this.unitSpeed = this.config.units.speed ? this.config.units.speed : this.weather && this.weather.attributes.wind_speed_unit;
   this.unitPressure = this.config.units.pressure ? this.config.units.pressure : this.weather && this.weather.attributes.pressure_unit;
   this.unitVisibility = this.config.units.visibility ? this.config.units.visibility : this.weather && this.weather.attributes.visibility_unit;
-  this.weather = this.config.entity in hass.states
-    ? hass.states[this.config.entity]
-    : null;
-
+  this.weather = this.config.entity in hass.states ? hass.states[this.config.entity] : null;
+  
   if (this.weather) {
     this.temperature = this.config.temp ? hass.states[this.config.temp].state : this.weather.attributes.temperature;
     this.humidity = this.config.humid ? hass.states[this.config.humid].state : this.weather.attributes.humidity;
@@ -154,44 +165,45 @@ set hass(hass) {
     this.dew_point = this.config.dew_point ? hass.states[this.config.dew_point].state : this.weather.attributes.dew_point;
     this.wind_gust_speed = this.config.wind_gust_speed ? hass.states[this.config.wind_gust_speed].state : this.weather.attributes.wind_gust_speed;
     this.visibility = this.config.visibility ? hass.states[this.config.visibility].state : this.weather.attributes.visibility;
-
+    this.forecasts = ('forecast' in this.weather.attributes) ? this.weather.attributes.forecast : null;
+    
     if (this.config.winddir && hass.states[this.config.winddir] && hass.states[this.config.winddir].state !== undefined) {
       this.windDirection = parseFloat(hass.states[this.config.winddir].state);
     } else {
       this.windDirection = this.weather.attributes.wind_bearing;
     }
-
+    
     this.feels_like = this.config.feels_like && hass.states[this.config.feels_like] ? hass.states[this.config.feels_like].state : this.weather.attributes.apparent_temperature;
     this.description = this.config.description && hass.states[this.config.description] ? hass.states[this.config.description].state : this.weather.attributes.description;
   }
-
-  if (this.weather && !this.forecastSubscriber) {
-    this.subscribeForecastEvents();
-  }
+  
+  // if (this.weather && !this.forecastSubscriber) {
+  //   this.subscribeForecastEvents();
+  // }
 }
 
-subscribeForecastEvents() {
-  const forecastType = this.config.forecast.type || 'daily';
-  const isHourly = forecastType === 'hourly';
+// subscribeForecastEvents() {
+//   const forecastType = this.config.forecast.type || 'daily';
+//   const isHourly = forecastType === 'hourly';
 
-  const feature = isHourly ? WeatherEntityFeature.FORECAST_HOURLY : WeatherEntityFeature.FORECAST_DAILY;
-  if (!this.supportsFeature(feature)) {
-    console.error(`Weather entity "${this.config.entity}" does not support ${isHourly ? 'hourly' : 'daily'} forecasts.`);
-    return;
-  }
+//   const feature = isHourly ? WeatherEntityFeature.FORECAST_HOURLY : WeatherEntityFeature.FORECAST_DAILY;
+//   if (!this.supportsFeature(feature)) {
+//     console.error(`Weather entity "${this.config.entity}" does not support ${isHourly ? 'hourly' : 'daily'} forecasts.`);
+//     return;
+//   }
 
-  const callback = (event) => {
-    this.forecasts = event.forecast;
-    this.requestUpdate();
-    this.drawChart();
-  };
+//   const callback = (event) => {
+//       this.forecasts = event.forecast;
+//       this.requestUpdate();
+//       this.drawChart(); 
+//   };
 
-  this.forecastSubscriber = this._hass.connection.subscribeMessage(callback, {
-    type: "weather/subscribe_forecast",
-    forecast_type: isHourly ? 'hourly' : 'daily',
-    entity_id: this.config.entity,
-  });
-}
+//   this.forecastSubscriber = this._hass.connection.subscribeMessage(callback, {
+//     type: "weather/subscribe_forecast",
+//     forecast_type: isHourly ? 'hourly' : 'daily',
+//     entity_id: this.config.entity,
+//   });
+// }
 
   supportsFeature(feature) {
     return (this.weather.attributes.supported_features & feature) !== 0;
@@ -220,9 +232,9 @@ subscribeForecastEvents() {
   disconnectedCallback() {
     super.disconnectedCallback();
     this.detachResizeObserver();
-    if (this.forecastSubscriber) {
-      this.forecastSubscriber.then((unsub) => unsub());
-    }
+    // if (this.forecastSubscriber) {
+    //   this.forecastSubscriber.then((unsub) => unsub());
+    // }
   }
 
   attachResizeObserver() {
@@ -397,13 +409,13 @@ async updated(changedProperties) {
     const forecastTypeChanged = oldConfig && this.config.forecast.type !== oldConfig.forecast.type;
     const autoscrollChanged = oldConfig && this.config.autoscroll !== oldConfig.autoscroll;
 
-    if (entityChanged || forecastTypeChanged) {
-      if (this.forecastSubscriber && typeof this.forecastSubscriber === 'function') {
-        this.forecastSubscriber();
-      }
+    // if (entityChanged || forecastTypeChanged) {
+    //   if (this.forecastSubscriber && typeof this.forecastSubscriber === 'function') {
+    //     this.forecastSubscriber();
+    //   }
 
-      this.subscribeForecastEvents();
-    }
+    //   this.subscribeForecastEvents();
+    // }
 
     if (this.forecasts && this.forecasts.length) {
       this.drawChart();
@@ -1051,7 +1063,7 @@ renderMain({ config, sun, weather, temperature, feels_like, description } = this
   updateClock();
 
   if (showTime) {
-    setInterval(updateClock, 1000);
+      setInterval(updateClock, 1000);
   }
 
   return html`

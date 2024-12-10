@@ -1,3 +1,5 @@
+const CARD_VERSION = "1.0.0 WeatherEntityMod";
+
 const cardinalDirectionsIcon = [
   'arrow-down', 'arrow-bottom-left', 'arrow-left',
   'arrow-top-left', 'arrow-up', 'arrow-top-right',
@@ -57,5 +59,6 @@ export {
   weatherIcons,
   weatherIconsDay,
   weatherIconsNight,
-  WeatherEntityFeature
+  WeatherEntityFeature,
+  CARD_VERSION
 };
